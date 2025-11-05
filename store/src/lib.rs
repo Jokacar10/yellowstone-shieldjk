@@ -454,7 +454,6 @@ impl<'de> Deserialize<'de> for ShieldStoreCommitmentLevel {
 pub struct PolicyStoreConfig {
     pub rpc: PolicyStoreRpcConfig,
     pub grpc: PolicyStoreGrpcConfig,
-    pub program_id: Option<Pubkey>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -497,9 +496,7 @@ impl PolicyStoreBuilder {
         let config = self.config.take().ok_or(StoreError::NoConfig)?;
         let rpc = RpcClient::new(config.rpc.endpoint);
 
-        // Use custom program ID if provided, otherwise use default
-        let program_id = config.program_id.as_ref().unwrap_or(&PROGRAM_ID);
-        let policies = PolicyRpcClient::new(rpc).list(program_id).await.map_err(|e| StoreError::RpcError(e.to_string()))?;
+        let policies = PolicyRpcClient::new(rpc).list(&PROGRAM_ID).await.map_err(|e| StoreError::RpcError(e.to_string()))?;
 
         let cache = Arc::new(policies.into());
         let snapshot = Arc::new(ArcSwap::from_pointee(Snapshot::new(&cache)));
@@ -568,7 +565,7 @@ impl PolicyStoreBuilder {
             "".to_string(),
             SubscribeRequestFilterAccounts {
                 account: vec![],
-                owner: vec![program_id.to_string()],
+                owner: vec![PROGRAM_ID.to_string()],
                 filters: vec![],
                 nonempty_txn_signature: None,
             },
@@ -594,7 +591,6 @@ impl PolicyStoreBuilder {
         // Spawn task to process account updates
         let cache_clone = Arc::clone(&cache);
         let snapshot_clone = Arc::clone(&snapshot);
-        let program_id_clone = *program_id;
 
         tokio::spawn(async move {
             while let Some(message) = stream.next().await {
@@ -627,7 +623,7 @@ impl PolicyStoreBuilder {
                                     pubkey,
                                     &owner,
                                     &account.data,
-                                    Some(&program_id_clone),
+                                    Some(&PROGRAM_ID),
                                 ) {
                                     Ok(ShieldProgramState::Policy(slot, pubkey, policy)) => {
                                         cache_clone.insert(pubkey, slot, policy);

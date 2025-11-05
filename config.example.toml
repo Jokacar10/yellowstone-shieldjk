@@ -45,6 +45,3 @@ endpoint = "http://127.0.0.1:10000"
 
 # Initial stream window size (optional)
 # initial-stream-window-size = 65535
-
-# Optional custom program ID to track (defaults to Shield program ID)
-# program-id = "b1ockYL7X6sGtJzueDbxRVBEEPN4YeqoLW276R3MX8W"
